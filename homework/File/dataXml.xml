@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<saranghe>
+    <child name="Frank" test="0">
+        FRANK LinkS EVERYONYE
+    </child>
+    <unique>
+        Add a video URL in here
+    </unique>
+    <child name="Texas" test="0">
+        Texas is a placf
+    </child>
+    <unique>
+        Add a workbook URL here
+    </unique>
+    <data>
+        <family>
+            Add the content of your article here
+        </family>
+        <size>
+            Add the font size of your text here
+        </size>
+    </data>
+</saranghe>
