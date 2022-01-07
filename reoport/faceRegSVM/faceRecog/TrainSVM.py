@@ -6,10 +6,9 @@ from sklearn import svm
 import pickle
 import numpy as np
 from api_models.face_recognition.face_recognition_cli import image_files_in_folder
-from examples.process.DataProcessing import image_data, SaveImage, CheckMaxMin
+from faceRegSVM.process.DataProcessing import image_data, SaveImage, CheckMaxMin
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'PNG'}
-
 
 def train(path_train, model_save_path=None, verbose=False):
     names = []
@@ -37,18 +36,17 @@ def train(path_train, model_save_path=None, verbose=False):
             pickle.dump([clf, means, names], f)
     return clf, means, names
 
-
-if __name__ == "__main__":
-    datafolder = "faceData"
-    path_train = "../data/faceTrain"
-    path_test = "../data/faceTest"
-    model_save_path = "../models/svm_means_test.dat"
+def main(datafolder, path_train, path_test, model_save_path):
+    if not os.path.exists(datafolder):
+        os.mkdir(datafolder)
+    if not os.path.exists(model_save_path):
+        os.mkdir(model_save_path)
     if not os.path.exists(path_train):
         os.mkdir(path_train)
     if not os.path.exists(path_test):
         os.mkdir(path_test)
     if len(os.listdir(path_train)) != 0 or len(os.listdir(path_test)) != 0:
-        print("Da chia tap trainControl test")
+        print("Da chia tap train test")
     else:
         X_train, X_test, Y_train, Y_test, path_train, path_test, datafolder = image_data(datafolder, path_train,
                                                                                          path_test)
@@ -66,3 +64,6 @@ if __name__ == "__main__":
             os.path.join(curr_path, file)
             CountImage += 1
     print("Time to trainControl a photo is: ", (float(str(end - start)) / CountImage))
+
+if __name__ == "__main__":
+    main("faceData", "../data/faceTrain", "../data/faceTest", "../models/svm_means_test.dat")

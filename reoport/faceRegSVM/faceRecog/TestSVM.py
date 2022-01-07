@@ -47,16 +47,11 @@ def show_prediction_labels_on_image(X_img_path, path_out, means, names, model_sa
     pil_image.save(path_out)
     return nameout
 
-
-if __name__ == "__main__":
-    path_train = "../data/faceTrain"
-    path_test = "../data/faceTest"
-    model_save_path = "../models/svm_means_test.dat"
+def main(path_train, path_test, model_save_path, ImageOut):
     print("Load model...")
     if os.path.isfile(model_save_path):
         with open(model_save_path, 'rb') as f:
             clf, means, names = pickle.load(f)
-    ImageOut = "faceResults"
     if not os.path.exists(ImageOut):
         os.mkdir(ImageOut)
     CountName = 0
@@ -72,3 +67,6 @@ if __name__ == "__main__":
     print("The time to detect an data is: ", timer / CountDetect)
     print("Number of correctly identified images: ", (CountName))
     print("Detection accuracy for the detected set: ", str(CountName * 100 / CountDetect))
+
+if __name__ == "__main__":
+    main("../data/faceTrain", "../data/faceTest", "../models/svm_means_test.dat", "../data/faceResults")

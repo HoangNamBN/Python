@@ -1,7 +1,7 @@
 from tkinter import *
 from tkinter import filedialog
 from tkinter import messagebox
-import tkinter as tk
+import tkinter
 from api_models import face_recognition
 import os.path
 import time
@@ -13,41 +13,175 @@ from PIL import Image, ImageDraw, ImageTk
 from faceRegSVM.process.DataProcessing import image_data, SaveImage
 from api_models.face_recognition.face_recognition_cli import image_files_in_folder
 
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'PNG'}
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'PNG', "JPG"}
 CountDetect = 0
 path_train = "../data/faceTrain"
 path_test = "../data/faceTest"
 model_save_path = "../models/svm_means_test.dat"
+ImageOut = "../data/Out"
 
-'''font chữ cho giao diện'''
-large_font = ('Verdana', 25,"bold")
+''' font chữ cho giao diện '''
+large_font = ('Verdana', 25, "bold")
 small_font = ('Verdana', 10)
 
-
-def open_folder():
-    datafolder = filedialog.askdirectory()
-    pathfolder.set(datafolder)
-    return datafolder
+''' Tạo lớp giao diện '''
+root = tkinter.Tk()
 
 
-def Openfile():
+class Form(tkinter.Frame):
+    def __init__(self, parent):
+        tkinter.Frame.__init__(self, parent)
+        self.parent = parent
+        self.initialize_interface()
+    def initialize_interface(self):
+        self.parent.title("Face SVM")
+        # self.parent.config(background="lavender")
+        self.parent.geometry("800x650")
+        self.parent.resizable(False, False)
+
+        '''khai báo các biến toàn cục sử dụng cho bài toán'''
+        global openFolder  # biến dùng để lưu đường dẫn mở folder
+        global countTrainImg  # biến dùng để lấy kết quả số lượng ảnh train
+        global countTestImg  # biến dùng để lấy kết quả số lượng ảnh test
+        global openImage  # biến dùng để lưu kết quả mở ảnh
+        global ImgRecognition  # biến dùng để lưu kết quả đường dẫn ảnh được nhận dạng
+        global timetrain  # biến dùng để lưu thời gian train 1 ảnh
+        global timetest  # biến dùng để lưu thời gian test 1 ảnh
+        global namespersion  # biến dùng để lấy ra tên người dùng
+        # global img
+
+        ''' dùng các biến để hứng kết quả'''
+        openFolder = tkinter.StringVar()
+        countTrainImg = tkinter.StringVar()
+        countTestImg = tkinter.StringVar()
+        openImage = tkinter.StringVar()
+        ImgRecognition = tkinter.StringVar()
+        timetrain = tkinter.StringVar()
+        timetest = tkinter.StringVar()
+        namespersion = tkinter.StringVar()
+
+        ''' Tạo tiêu đề '''
+        self.lbGui = tkinter.Label(self.parent, text="Recoginition Face with SVM", fg="black", font=large_font)
+        self.lbGui.place(x=160, y=15)
+
+        ''' Tạo button mở lấy đường dẫn của folder faceData '''
+        self.btnFolder = tkinter.Button(self.parent, text="Open Brower", command=open_folder, fg="black",
+                                        font=small_font)
+        self.btnFolder.place(x=10, y=70, width=150, height=25)
+
+        ''' Taọ entry hứng kết quả lấy đường dẫn folder '''
+        self.entryFolder = tkinter.Entry(self.parent, textvariable=openFolder, width=85, font=small_font)
+        self.entryFolder.place(x=180, y=70, height=25)
+
+        ''' Tạo button chia dữ liệu'''
+        self.btnResultTrainTest = tkinter.Button(self.parent, text="Split Dataset", fg="black", font=small_font,
+                                                 command=Train_Test)
+        self.btnResultTrainTest.place(x=10, y=120, width=150, height=25)
+
+        ''' entry lấy kết quả trả về của số lượng ảnh train '''
+        self.lbCountTrain = tkinter.Label(self.parent, text="Train ", fg="black", font=small_font)
+        self.lbCountTrain.place(x=180, y=120)
+        self.entryTrain = tkinter.Entry(self.parent, textvariable=countTrainImg, width=20)
+        self.entryTrain.place(x=230, y=115, height=25)
+        self.lbFIle = tkinter.Label(self.parent, text="file", fg="black", font=small_font)
+        self.lbFIle.place(x=380, y=120)
+
+        ''' entry lấy kết quả trả về của số lượng ảnh test '''
+        self.lbCountTest = tkinter.Label(self.parent, text="Test", fg="black", font=small_font)
+        self.lbCountTest.place(x=500, y=120)
+        self.entryTest = tkinter.Entry(self.parent, textvariable=countTestImg, width=20)
+        self.entryTest.place(x=550, y=115, height=25)
+        self.lbFIleTest = tkinter.Label(self.parent, text="file", fg="black", font=small_font)
+        self.lbFIleTest.place(x=700, y=120)
+
+        ''' Button train dữ liệu '''
+        self.btnTrain = tkinter.Button(self.parent, text="Train Models", command=TrainModels)
+        self.btnTrain.place(x=10, y=170, width=150, height=25)
+
+        ''' mở ảnh lên để test '''
+        self.openfile = tkinter.Button(self.parent, text="Open Image", command=OPenImage)
+        self.openfile.place(x=180, y=170, width=150, height=25)
+
+        self.btnRecognition = tkinter.Button(self.parent, text="Detector and Recognition", command=Detector)
+        self.btnRecognition.place(x=350, y=170, width=220, height=25)
+
+        self.lbImage = tkinter.Label(self.parent, bd=2, text="Choose photos to check", borderwidth=2, width=20,
+                                     height=10, relief="ridge")
+        self.lbImage.place(x=10, y=220, width=250, height=250)
+
+        img = Image.open("muiten.png")
+        img = img.resize((25, 25), Image.ANTIALIAS)
+        img = ImageTk.PhotoImage(img)
+        self.lbMuiTen = tkinter.Label(self.parent, image=img, bd=2, borderwidth=2, relief="ridge")
+        self.lbMuiTen.image = img
+        self.lbMuiTen.place(x=275, y=320)
+
+        self.lbImageReg = tkinter.Label(self.parent, bd=2, text="Recognized photo", borderwidth=2, width=20,
+                                        height=10, relief="ridge")
+        self.lbImageReg.place(x=320, y=220, width=250, height=250)
+
+        self.lbTitle = tkinter.Label(self.parent, text="Execution Time")
+        self.lbTitle.place(x=600, y=220)
+
+        ''' thực hiện lấy thời gian train '''
+        self.lbTimeTrain = tkinter.Label(self.parent, bd=2, text="train time: ")
+        self.lbTimeTrain.place(x=600, y=260)
+
+        ''' entry hứng kết quả thời gian train dữ liệu '''
+        self.entryTimeTrain = tkinter.Entry(self.parent, textvariable=timetrain, width=8)
+        self.entryTimeTrain.place(x=690, y=260)
+
+        ''' label số giây '''
+        self.lbS = tkinter.Label(self.parent, text="(s)", fg="black", font=small_font)
+        self.lbS.place(x=760, y=260)
+
+        ''' thực hiện lấy thời gian test '''
+        self.lbTimeTest = tkinter.Label(self.parent, bd=2, text="test time: ")
+        self.lbTimeTest.place(x=600, y=300)
+
+        ''' entry hứng kết quả thời gian train dữ liệu '''
+        self.entryTimetest = tkinter.Entry(self.parent, textvariable=timetest, width=8)
+        self.entryTimetest.place(x=690, y=300)
+
+        ''' label số giây '''
+        self.lbSTest = tkinter.Label(self.parent, text="(s)", fg="black", font=small_font)
+        self.lbSTest.place(x=760, y=300)
+
+        ''' thực hiện lấy tên ảnh của người cần nhận dạng '''
+        self.lbRecoginitionName = tkinter.Label(self.parent, text="Recoginition Face", fg="black", font=small_font)
+        self.lbRecoginitionName.place(x=10, y=515)
+
+        ''' Hứng tên kết quả nhận dạng '''
+        self.entryNames = tkinter.Entry(self.parent, textvariable=namespersion, width=85, font=small_font)
+        self.entryNames.place(x=180, y=510, height=25)
+
+        ''' Đánh dấu tác giả '''
+        tkinter.Label(self.parent, text="Electric Power Universtiy - class D13CNPM5", fg="black",
+                      font=small_font).place(x=10, y=560)
+        tkinter.Label(self.parent, text="Members: Nguyen Van Nam and Ha Quy Duc", fg="black", font=small_font).place(
+            x=10, y=590)
+
+def OPenImage():
+    x = openfile()
+    img = Image.open(x)
+    img = img.resize((250, 250), Image.ANTIALIAS)
+    img = ImageTk.PhotoImage(img)
+    lbImage = tkinter.Label(root, image=img, bd=2, borderwidth=2, width=20, height=10, relief="ridge")
+    lbImage.image = img
+    lbImage.place(x=10, y=220, width=250, height=250)
+
+def openfile():
     filename = filedialog.askopenfilename()
-    openfile.set(filename)
+    openImage.set(filename)
     return filename
 
-
-def openImage():
-    x = Openfile()
-    img = Image.open(x)
-    img = img.resize((145, 155), Image.ANTIALIAS)
-    img = ImageTk.PhotoImage(img)
-    lableImage = Label(Gui, image=img, bd=2, borderwidth=2, relief="ridge")
-    lableImage.image = img
-    lableImage.place(x=10, y=150)
-
+def open_folder():
+    folder = filedialog.askdirectory()
+    openFolder.set(folder)
+    return openFolder
 
 def Train_Test():
-    datafolder = pathfolder.get()
+    datafolder = openFolder.get()
     path_train = "../data/faceTrain"
     path_test = "../data/faceTest"
     if not os.path.exists(path_train):
@@ -57,11 +191,10 @@ def Train_Test():
     messagebox.showinfo("Notification", "Start Dividing Data")
     X_train, X_test, Y_train, Y_test, path_train, path_test, datafolder = image_data(datafolder, path_train, path_test)
     SaveImage(X_train, X_test, Y_train, Y_test, path_train, path_test)
-    train.set(len(X_train))
-    test.set(len(X_test))
+    countTrainImg.set(len(X_train))
+    countTestImg.set(len(X_test))
     print("Dividing faceTrain faceTest Accssuary !")
     messagebox.showinfo("Notification", "Successfully Divided Data")
-
 
 def TrainModels():
     print("Start faceTrain Models....")
@@ -92,12 +225,11 @@ def TrainModels():
         with open(model_save_path, 'wb') as f:
             pickle.dump([clf, means, names], f)
     end = time.time()
-    FileNumber_Train = train.get()
-    timetrain.set(round(float(str(end - start)) / float(FileNumber_Train), 2))
+    countTrain = countTrainImg.get()
+    timetrain.set(round(float(str(end - start)) / float(countTrain), 2))
     print("faceTrain Models Accssuary !")
     messagebox.showinfo("Notification", "Successful model training")
     return clf, means, names
-
 
 def show_prediction_labels_on_image(X_img_path, path_out, means, names, model_save_path=None, clf=None):
     global CountDetect
@@ -137,104 +269,29 @@ def show_prediction_labels_on_image(X_img_path, path_out, means, names, model_sa
     timetest.set(round((float(str(end - start)) / CountDetect), 2))
     return nameout
 
-
 def Detector():
     if os.path.isfile(model_save_path):
         with open(model_save_path, 'rb') as f:
             clf, means, names = pickle.load(f)
-    ImageOut = "Out"
     if not os.path.exists(ImageOut):
         os.mkdir(ImageOut)
     CountName = 0
-    full_file_path = openfile.get()
+    full_file_path = openImage.get()
     path_out = ImageOut + "/" + os.path.basename(full_file_path)
     name = show_prediction_labels_on_image(full_file_path, path_out, means, names, model_save_path)
     if str(name) == str(os.path.basename(full_file_path).split("_")[0]):
         CountName += 1
     recognition = path_out
     img = Image.open(recognition)
-    img = img.resize((145, 155), Image.ANTIALIAS)
+    img = img.resize((250, 250), Image.ANTIALIAS)
     img = ImageTk.PhotoImage(img)
-    lableRecognition = Label(Gui, image=img, bd=2, borderwidth=2, relief="ridge")
-    lableRecognition.image = img
-    lableRecognition.place(x=200, y=150)
+    lbRecognition=Label(root, image=img, bd=2, borderwidth=2, width=20, height=10, relief="ridge")
+    lbRecognition.image = img
+    lbRecognition.place(x=320, y=220, width=250, height=250)
 
+def main():
+    gui = Form(root)
+    gui.mainloop()
 
-def guiFaceSVM(kichthuoc, title):
-    ''' Tạo khung cho giao diện '''
-    guiFace = tk.Tk()
-    guiFace.geometry(kichthuoc)
-    guiFace.title(title)
-
-    titleSVM = Label(guiFace, text = title, fg="red", font= large_font).place(x=190, y=5)
-
-    ''' tạo chức năng mở folder'''
-    btnFolder = Button(guiFace, text="1. Open Brower", command=open_folder, fg="black", bg ="yellow", font = small_font).place(x=10, y=70,  width= 150, height=30)
-    pathfolder = StringVar()
-    txtFolder = Entry(guiFace, textvariable= pathfolder, width = 80, font = small_font).place(x = 180, y = 70, height=30)
-
-
-    ''' trả về số lượng ảnh khi chia tập train test '''
-    lbTrain = Label(guiFace, text="Result train test", fg="black", font=("Arial", 9)).place(x=10, y=120)
-
-    return guiFace, pathfolder
-
-
-guiFace, pathfolder = guiFaceSVM("800x750", "Face Recognition SVM")
-
-#
-# ''' trả về kết quả dữ liệu train của tập dữ liệu '''
-# titleTrain = Label(Gui, text="Data faceTrain", fg="black", font=("Arial", 9)).place(x=10, y=80)
-# train = StringVar()
-# txtPathTrain = Entry(Gui, textvariable=train, width=20).place(x=80, y=80)
-# txtfiletrain = Label(Gui, text="file", fg="black", font=("Arial", 9)).place(x=203, y=80)
-
-# # lấy số lượng ảnh trong tập test
-# TitleTest = Label(Gui, text="Data faceTest", fg="black", font=("Arial", 9)).place(x=300, y=80)
-# test = StringVar()
-# txtPathTest = Entry(Gui, textvariable=test, width=20).place(x=370, y=80)
-# txtfiletest = Label(Gui, text="file", fg="black", font=("Arial", 9)).place(x=483, y=80)
-#
-# # thực hiện chức năng mở ảnh lên để test
-# openfile = StringVar()
-# btnOpenFile = Button(Gui, text="4. Open Image", command=openImage).place(x=10, y=115)
-# lableImage = Label(Gui, bd=2, text="Choose photos to check", borderwidth=2, width=20, height=10, relief="ridge").place(
-#     x=10, y=150)
-#
-# recognition = StringVar()
-# lableRecognition = Label(Gui, bd=2, text="Recognized photo", borderwidth=2, width=20, height=10, relief="ridge").place(
-#     x=200, y=150)
-#
-# # thực hiện lấy thời gian trainControl trung bình của một ảnh
-# timetrain = StringVar()
-# lableTimeTrain = Label(Gui, bd=2, text="faceTrain time").place(x=355, y=145)
-# txtTimeTrain = Entry(Gui, textvariable=timetrain, width=8).place(x=430, y=145)
-# txtstrain = Label(Gui, text="(s)", fg="black", font=("Arial", 9)).place(x=475, y=145)
-#
-# # thực hiện lấy thời gian test của một ảnh
-# timetest = StringVar()
-# labeltest = Label(Gui, bd=2, text="Detect time").place(x=355, y=175)
-# txttest = Entry(Gui, textvariable=timetest, width=8).place(x=430, y=175)
-# txtstest = Label(Gui, text="(s)", fg="black", font=("Arial", 9)).place(x=475, y=175)
-#
-# # thực hiện lấy tên ảnh của người cần nhận diện
-# namespersion = StringVar()
-# lableRecognitionFace = Label(Gui, text="Names", fg="black", font=("Arial", 9)).place(x=45, y=320)
-# txtNames = Entry(Gui, width=65, textvariable=namespersion).place(x=110, y=320)
-#
-# btnChiaDuLieu = Button(Gui, text="2. Divide data", command=Train_Test, fg="black").place(x=170, y=350)
-# btnTrain = Button(Gui, text="3. faceTrain", command=TrainModels, fg="black").place(x=280, y=350)
-# btnRecognition = Button(Gui, text="5.Detector and Recognition", command=Detector, fg="black").place(x=350, y=350)
-#
-# Label(Gui, text="Electric Power University - Class D13CNPM5", fg="black", font=("Arial", 7)).place(x=10, y=390)
-# Label(Gui, text="Members: Nguyen Van Nam and Ha Quy Duc and Can Quang Trieu", fg="black", font=("Arial", 7)).place(x=10,
-#                                                                                                                    y=410)
-#
-# img = Image.open("muiten.png")
-# img = img.resize((25, 25), Image.ANTIALIAS)
-# img = ImageTk.PhotoImage(img)
-# lableMuiTen = Label(Gui, image=img, bd=2, borderwidth=2, relief="ridge")
-# lableMuiTen.image = img
-# lableMuiTen.place(x=165, y=220)
-
-guiFace.mainloop()
+if __name__ == "__main__":
+    main()
